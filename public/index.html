@@ -1,0 +1,98 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>AstraFlux — Live Debug Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <style>
+      :root{--bg:#0b0f14;--panel:#0f1520;--border:#1f2a37;--text:#e6f1ff;}
+      body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background:var(--bg); color:var(--text); margin:0; }
+      header { position:sticky; top:0; background:#0b0f14ee; border-bottom:1px solid #15202b; padding:12px 16px; }
+      .wrap { padding:16px; display:grid; gap:12px; max-width:1100px; margin:0 auto; }
+      .card { border:1px solid var(--border); border-radius:12px; padding:12px; background:var(--panel); }
+      .badge { padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #334155; }
+      .high { background:#3b0f14; color:#ff9ba3; border-color:#ff4154; }
+      .med  { background:#2a1b0a; color:#ffcf91; border-color:#ffa333; }
+      .low  { background:#0f2a1a; color:#9dffbf; border-color:#29e68a; }
+      pre { white-space: pre-wrap; word-break: break-word; margin:0; }
+      .cols { display:grid; gap:12px; grid-template-columns: 1fr 1fr; }
+      @media (max-width:900px){ .cols { grid-template-columns: 1fr; } }
+      button { background:#162133; color:#cde1ff; border:1px solid #223250; padding:8px 12px; border-radius:8px; cursor:pointer; }
+      button:hover{ filter:brightness(1.1); }
+      details summary { cursor:pointer; }
+    </style>
+  </head>
+  <body>
+    <header><strong>AstraFlux</strong> — Real-Time Auto Debug (Rule-based)</header>
+    <div class="wrap">
+      <div class="card">
+        <div><strong>How to test</strong></div>
+        <ol>
+          <li>Click <em>Emit Sample Error</em> OR run <code>npm run demo</code>.</li>
+          <li>Watch <strong>Live Logs</strong> and <strong>RCA</strong> cards update.</li>
+        </ol>
+        <button id="emit">Emit Sample Error</button>
+      </div>
+
+      <div class="cols">
+        <div class="card">
+          <h3>Live Logs</h3>
+          <div id="logs"></div>
+        </div>
+        <div class="card">
+          <h3>AI-like RCA (Rule-based)</h3>
+          <div id="rca"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const logsEl = document.getElementById('logs');
+      const rcaEl = document.getElementById('rca');
+
+      const ev = new EventSource('/stream');
+      ev.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'log') {
+          const d = data.log;
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `
+            <div><strong>${d.level.toUpperCase()}</strong> — <small>${d.ts}</small></div>
+            <pre>${d.message}</pre>
+            ${d.stack ? `<details><summary>stack</summary><pre>${d.stack}</pre></details>` : ''}
+            ${d.meta ? `<small>meta: ${JSON.stringify(d.meta)}</small>` : ''}
+          `;
+          logsEl.prepend(div);
+        }
+        if (data.type === 'rca') {
+          const obj = typeof data.rca === 'string' ? JSON.parse(data.rca) : data.rca;
+          const sev = (obj.severity || 'low').toLowerCase();
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `
+            <div><span class="badge ${sev}">${sev.toUpperCase()}</span></div>
+            <div><strong>Root Cause:</strong> ${obj.root_cause}</div>
+            <div><strong>Why:</strong> ${obj.why}</div>
+            <div><strong>Fix:</strong> ${obj.fix}</div>
+            <details><summary>Snippet</summary><pre>${obj.snippet || ''}</pre></details>
+          `;
+          rcaEl.prepend(div);
+        }
+      };
+
+      document.getElementById('emit').onclick = async () => {
+        await fetch('/log', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            level: 'error',
+            message: "TypeError: Cannot read properties of undefined (reading 'length')",
+            stack: "at demo.js:12:15",
+            meta: { uiClick: true }
+          })
+        });
+      };
+    </script>
+  </body>
+</html>

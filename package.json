@@ -1,0 +1,17 @@
+{
+  "name": "astra-flux-demo",
+  "version": "2.0.0",
+  "description": "AstraFlux: real-time auto-debug + GitHub-ready Repo Auditor",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "demo": "node demo/demo-app.js",
+    "audit": "node auditor/cli.js ."
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "morgan": "^1.10.0"
+  }
+}
